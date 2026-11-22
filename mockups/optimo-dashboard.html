@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Optimo Portfolio Optimizer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: sticky top bar; left input rail (320px) + results column (KPI row → frontier+allocation → growth → correlation+per-stock) */
+:root{
+  --bg:#F5F3EE; --surface:#FFFFFF; --surface-2:#EDE6DA; --surface-3:#F8F5EF;
+  --ink:#1E1D1B; --muted:#8A7F72; --line:#E7E1D6;
+  --accent:#E8461E; --accent-soft:#FBE3DA; --on-accent:#FFFFFF;
+  --pos:#3F8B2A; --neg:#D23B26;
+  --sage:#9DB57A; --sage-soft:#E6EEDA; --sun:#F2C94C; --sun-soft:#FBF0CF; --sky:#CFE3F0; --blush:#F6C2B4;
+  --ew:#8A7F72; --bench:#3F78A0;
+  --ramp-1:#ECE6DA; --ramp-2:#CBD8AE; --ramp-3:#9DB57A; --ramp-4:#5E7F3E; --ramp-5:#2E4A22;
+  --div-neg:#4F86A8; --div-mid:#F8F5EF; --div-pos:#E8461E;
+  --s1:#E8461E; --s2:#5E7F3E; --s3:#4F86A8; --s4:#D9A92B; --s5:#C9705A; --s6:#2E7D74; --s7:#8B5A7A; --s8:#9AA13A; --s9:#8A7F72; --s10:#3B3833;
+  --shadow:0 1px 2px rgba(40,30,15,.04), 0 6px 20px rgba(40,30,15,.05);
+  --card-border:transparent;
+  --font-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --font-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius:20px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161513; --surface:#211F1C; --surface-2:#2D2A25; --surface-3:#1B1A17;
+    --ink:#F2EEE6; --muted:#A89D8F; --line:#36322C;
+    --accent:#FF6A3D; --accent-soft:#4A2519; --on-accent:#1A0E09;
+    --pos:#7CC35E; --neg:#FF7461;
+    --sage:#A9C487; --sage-soft:#2E3626; --sun:#E8C25A; --sun-soft:#3B3220; --sky:#2C4454; --blush:#5A3A30;
+    --ew:#BDB2A3; --bench:#7DB3D6;
+    --ramp-1:#38342D; --ramp-2:#56663F; --ramp-3:#86A964; --ramp-4:#B5D296; --ramp-5:#E3F0D2;
+    --div-neg:#6FA6CA; --div-mid:#2A2723; --div-pos:#FF6A3D;
+    --s1:#FF6A3D; --s2:#8FB06C; --s3:#6FA6CA; --s4:#E8C25A; --s5:#E0937D; --s6:#5BB3A7; --s7:#C08DB0; --s8:#C3C962; --s9:#BDB2A3; --s10:#EDE6DA;
+    --shadow:none; --card-border:#2E2B26;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161513; --surface:#211F1C; --surface-2:#2D2A25; --surface-3:#1B1A17;
+  --ink:#F2EEE6; --muted:#A89D8F; --line:#36322C;
+  --accent:#FF6A3D; --accent-soft:#4A2519; --on-accent:#1A0E09;
+  --pos:#7CC35E; --neg:#FF7461;
+  --sage:#A9C487; --sage-soft:#2E3626; --sun:#E8C25A; --sun-soft:#3B3220; --sky:#2C4454; --blush:#5A3A30;
+  --ew:#BDB2A3; --bench:#7DB3D6;
+  --ramp-1:#38342D; --ramp-2:#56663F; --ramp-3:#86A964; --ramp-4:#B5D296; --ramp-5:#E3F0D2;
+  --div-neg:#6FA6CA; --div-mid:#2A2723; --div-pos:#FF6A3D;
+  --s1:#FF6A3D; --s2:#8FB06C; --s3:#6FA6CA; --s4:#E8C25A; --s5:#E0937D; --s6:#5BB3A7; --s7:#C08DB0; --s8:#C3C962; --s9:#BDB2A3; --s10:#EDE6DA;
+  --shadow:none; --card-border:#2E2B26;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg); color:var(--ink); font:14px/1.5 var(--font-body); -webkit-font-smoothing:antialiased}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--surface)}
+h1,h2,h3{font-family:var(--font-display); font-weight:500; margin:0; text-wrap:balance; letter-spacing:-.01em}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Top bar */
+.topbar{position:sticky; top:env(safe-area-inset-top,0px); z-index:30; background:var(--surface); border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1920px; margin:0 auto; display:flex; align-items:center; gap:24px; height:68px;
+  padding-left:max(32px, env(safe-area-inset-left,0px)); padding-right:max(32px, env(safe-area-inset-right,0px))}
+.brand{display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-.02em}
+.brand svg{flex:none}
+.nav{display:flex; gap:4px; background:var(--surface-2); border-radius:12px; padding:4px}
+.nav button{border:0; background:none; padding:7px 16px; border-radius:9px; cursor:pointer; color:var(--muted); font-weight:500}
+.nav button[aria-selected="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.top-right{margin-left:auto; display:flex; align-items:center; gap:12px}
+.icon-btn{width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--surface); display:grid; place-items:center; cursor:pointer; color:var(--ink)}
+.avatar{width:36px; height:36px; border-radius:50%; background:var(--sage); color:#1E2A14; display:grid; place-items:center; font-weight:600; font-size:13px}
+
+/* Shell */
+.shell{max-width:1920px; margin:0 auto; display:grid; grid-template-columns:340px minmax(0,1fr); gap:24px; align-items:start;
+  padding-block:24px 56px; padding-left:max(32px, env(safe-area-inset-left,0px)); padding-right:max(32px, env(safe-area-inset-right,0px))}
+.card{background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--card-border); padding:20px 22px; min-width:0}
+
+/* Rail */
+.rail{position:sticky; top:calc(env(safe-area-inset-top,0px) + 88px); display:flex; flex-direction:column; gap:20px; padding:22px}
+.field{display:flex; flex-direction:column; gap:10px}
+.label{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted)}
+.label .count{margin-left:auto; text-transform:none; letter-spacing:0; font-weight:500}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{display:inline-flex; align-items:center; gap:6px; padding:5px 6px 5px 10px; border-radius:999px; background:var(--surface-3); border:1px solid var(--line); font-weight:600; font-size:13px}
+.chip .dot{width:8px; height:8px; border-radius:50%}
+.chip button{border:0; background:none; width:20px; height:20px; border-radius:50%; cursor:pointer; color:var(--muted); display:grid; place-items:center; padding:0}
+.chip button:hover{background:var(--surface-2); color:var(--ink)}
+.add-row{display:flex; gap:6px}
+.input{width:100%; min-width:0; height:40px; border-radius:12px; border:1px solid var(--line); background:var(--surface-3); padding:0 12px}
+.input:focus{border-color:var(--accent); outline:none}
+.input-prefix{position:relative}
+.input-prefix span{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:13px; font-weight:500}
+.input-prefix .input{padding-left:50px}
+.input-suffix{position:relative}
+.input-suffix span{position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--muted)}
+.hint{font-size:12.5px; color:var(--muted); margin:0}
+.hint.err{color:var(--neg)}
+.seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; background:var(--surface-2); border-radius:12px; padding:4px; gap:2px}
+.seg button{border:0; background:none; height:32px; border-radius:9px; cursor:pointer; font-weight:500; color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.goal{display:flex; flex-direction:column; gap:8px}
+.goal label{display:grid; grid-template-columns:18px 1fr; gap:10px; align-items:start; padding:12px; border:1px solid var(--line); border-radius:14px; cursor:pointer; background:var(--surface-3)}
+.goal label:has(input:checked){border-color:var(--accent); background:var(--accent-soft)}
+.goal input{accent-color:var(--accent); margin:2px 0 0}
+.goal strong{display:block; font-weight:600; font-size:13.5px}
+.goal small{color:var(--muted); font-size:12.5px; line-height:1.4}
+.range-row{display:flex; align-items:center; gap:12px}
+.range-row input[type=range]{flex:1; accent-color:var(--accent)}
+.range-row output{min-width:44px; text-align:right; font-weight:600}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.btn{height:44px; border-radius:12px; border:1px solid var(--line); background:var(--surface); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:0 16px}
+.btn:hover{background:var(--surface-3)}
+.btn-primary{background:var(--accent); border-color:var(--accent); color:var(--on-accent); height:48px; font-size:15px}
+.btn-primary:hover{background:var(--accent); filter:brightness(1.05)}
+.btn-primary.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent)}}
+.divider{height:1px; background:var(--line); margin:2px 0}
+.save-form{display:flex; gap:6px}
+
+/* Info tip */
+.info{display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; border:1.5px solid currentColor; color:var(--muted); font:600 10.5px/1 var(--font-body); cursor:help; position:relative; background:none; padding:0; flex:none; text-transform:none; letter-spacing:0}
+.info::after{content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); width:250px; background:var(--ink); color:var(--bg);
+  padding:10px 12px; border-radius:10px; font:400 12.5px/1.45 var(--font-body); opacity:0; pointer-events:none; transition:opacity .15s; z-index:40; text-align:left; white-space:normal}
+.info.tl::after{left:auto; right:-10px; transform:none}
+.info.tr::after{left:-10px; transform:none}
+.info:hover::after,.info:focus-visible::after{opacity:1}
+
+/* Main */
+.main{display:flex; flex-direction:column; gap:20px; min-width:0}
+.page-head{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap}
+.page-head .eyebrow{font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.page-head h1{font-size:36px; line-height:1.15; margin-top:4px}
+.page-head .meta{color:var(--muted); margin-top:6px}
+.badges{margin-left:auto; display:flex; gap:16px; flex-wrap:wrap; align-items:center}
+.cmp{display:flex; align-items:center; gap:10px}
+.badge{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; font-size:12.5px; font-weight:500; background:var(--sun-soft); color:var(--ink); border:1px solid color-mix(in srgb, var(--sun) 50%, transparent)}
+.badge.stale{background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 40%, transparent)}
+
+.kpis{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:16px}
+.kpi{display:flex; flex-direction:column; gap:10px}
+.kpi-top{display:flex; align-items:center; gap:10px; color:var(--muted); font-weight:500}
+.kpi-ico{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; flex:none; color:var(--ink)}
+.kpi-top .info{margin-left:auto}
+.kpi-val{font-family:var(--font-display); font-size:32px; font-weight:500; line-height:1.1; font-variant-numeric:tabular-nums lining-nums}
+.kpi-delta{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted); flex-wrap:wrap}
+.delta{font-weight:600; display:inline-flex; align-items:center; gap:2px}
+.delta.good{color:var(--pos)} .delta.bad{color:var(--neg)} .delta.flat{color:var(--muted)}
+
+.grid-a{display:grid; grid-template-columns:minmax(0,7fr) minmax(0,5fr); gap:16px}
+.grid-b{display:grid; grid-template-columns:minmax(0,8fr) minmax(0,4fr); gap:16px}
+.card-head{display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap}
+.card-head h2{font-size:20px}
+.card-head .sub{color:var(--muted); font-size:13px; width:100%; margin-top:-2px}
+.card-head .right{margin-left:auto; display:flex; gap:12px; align-items:center; color:var(--muted); font-size:12.5px}
+.legend-item{display:inline-flex; align-items:center; gap:6px}
+.sw{width:10px; height:10px; border-radius:50%; display:inline-block}
+.sw.dia{border-radius:2px; transform:rotate(45deg); width:9px; height:9px}
+.sw.line{width:16px; height:3px; border-radius:2px}
+.chart{width:100%; height:400px}
+.chart.sm{height:300px}
+
+.pick{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:8px; padding:10px 14px; border-radius:14px; background:var(--surface-3); border:1px dashed var(--line); font-size:13px}
+.pick strong{font-weight:600}
+.pick .w{color:var(--muted)}
+.pick .acts{margin-left:auto; display:flex; gap:6px}
+.pick .btn{height:32px; font-size:13px; padding:0 12px; border-radius:10px}
+
+.alloc{display:flex; flex-direction:column; gap:4px}
+.donut{height:190px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+th{font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:600; text-align:right; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
+td{text-align:right; padding:10px; border-bottom:1px solid var(--line); white-space:nowrap}
+th:first-child, td:first-child{text-align:left; padding-left:0}
+tr:last-child td{border-bottom:0}
+.tk{display:flex; align-items:center; gap:10px}
+.tk .sw{flex:none}
+.tk b{font-weight:600}
+.tk small{display:block; color:var(--muted); font-size:12px; font-weight:400}
+.up{color:var(--pos)} .down{color:var(--neg)}
+.wbar{position:relative; height:8px; width:84px; background:var(--surface-2); border-radius:4px; display:inline-block; vertical-align:middle; margin-left:8px}
+.wbar i{position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--accent)}
+.wbar em{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); border-radius:1px}
+
+.foot{color:var(--muted); font-size:12.5px; line-height:1.55; max-width:90ch}
+
+/* Scenarios view */
+.scen-empty{color:var(--muted); padding:24px 0}
+.tag{display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--surface-2); color:var(--muted); margin-left:6px; vertical-align:middle}
+.goal-pill{display:inline-block; font-size:12px; font-weight:500; padding:3px 10px; border-radius:999px; background:var(--sage-soft)}
+.goal-pill.ret{background:var(--accent-soft)}
+.row-acts{display:inline-flex; gap:6px}
+.row-acts .btn{height:32px; font-size:13px; padding:0 12px; border-radius:10px}
+
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(20px); background:var(--ink); color:var(--bg);
+  padding:10px 18px; border-radius:12px; font-weight:500; opacity:0; transition:all .2s; z-index:50; pointer-events:none}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+
+/* Top bar actions */
+.btn-ghost{height:38px; border-radius:999px; border:1px solid var(--line); background:var(--surface); padding:0 14px; display:inline-flex; gap:8px; align-items:center; cursor:pointer; font-weight:500; color:var(--ink)}
+.btn-ghost:hover{background:var(--surface-3)}
+.btn-ai{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+.btn-ai:hover{background:var(--ink); filter:brightness(1.15)}
+.soon{font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; padding:2px 7px; border-radius:999px; background:var(--sun); color:#2A2210}
+.user{display:flex; align-items:center; gap:10px; padding-left:14px; border-left:1px solid var(--line); line-height:1.2}
+.user b{display:block; font-weight:600}
+.user small{color:var(--muted); font-size:12px}
+.badge.link{cursor:pointer; background:var(--surface); border-color:var(--line)}
+.badge.link:hover{background:var(--surface-3)}
+
+/* Drawers */
+.scrim{position:fixed; inset:0; background:rgba(20,15,10,.38); z-index:60}
+.drawer{position:fixed; top:0; right:0; bottom:0; width:min(500px,100%); background:var(--surface); z-index:61; display:flex; flex-direction:column;
+  box-shadow:-16px 0 48px rgba(0,0,0,.18); border-left:1px solid var(--card-border);
+  padding-top:env(safe-area-inset-top,0px); padding-right:env(safe-area-inset-right,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer-head{display:flex; align-items:center; gap:10px; padding:20px 24px; border-bottom:1px solid var(--line)}
+.drawer-head h2{font-size:24px}
+.drawer-head .icon-btn{margin-left:auto}
+.drawer-body{flex:1; overflow-y:auto; padding:22px 24px 32px; display:flex; flex-direction:column; gap:14px}
+.drawer-body h3{font-size:18px; margin-top:10px}
+.lead{font-size:15px; margin:0}
+.steps{list-style:none; counter-reset:s; margin:0; padding:0; display:flex; flex-direction:column; gap:12px}
+.steps li{counter-increment:s; display:grid; grid-template-columns:28px 1fr; gap:12px; align-items:start}
+.steps li::before{content:counter(s); width:28px; height:28px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-weight:700; display:grid; place-items:center; font-size:13px}
+.steps b{font-weight:600}
+.gloss{margin:0; display:flex; flex-direction:column; gap:10px}
+.gloss div{padding:12px 14px; border-radius:14px; background:var(--surface-3); border:1px solid var(--line)}
+.gloss dt{font-weight:600; margin-bottom:2px}
+.gloss dd{margin:0; color:var(--ink); opacity:.85}
+.rules{margin:0; padding-left:18px; display:flex; flex-direction:column; gap:6px}
+.note{font-size:12.5px; color:var(--muted); padding:10px 14px; border-radius:12px; background:var(--sun-soft)}
+.bubble{max-width:88%; padding:12px 14px; border-radius:16px; font-size:14px}
+.bubble.bot{background:var(--surface-3); border:1px solid var(--line); border-top-left-radius:4px}
+.bubble.me{align-self:flex-end; background:var(--accent); color:var(--on-accent); border-top-right-radius:4px}
+.prompts{display:flex; flex-direction:column; gap:8px}
+.prompts button{text-align:left; border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:10px 12px; cursor:pointer}
+.prompts button:hover{border-color:var(--accent)}
+.composer{display:flex; gap:8px; padding:16px 24px; border-top:1px solid var(--line)}
+.composer .input{height:44px}
+.composer .btn{height:44px}
+
+
+
+.seg.mini{grid-auto-columns:auto} .seg.mini button{padding:0 12px; height:30px; font-size:13px}
+.ft{display:flex; flex-direction:column; gap:8px}
+.ft td,.ft th{padding-block:6px}
+.stab{max-height:128px; overflow-y:auto}
+.ft .card-head{margin-bottom:0}
+.ft-top{display:flex; align-items:center; gap:12px} .ft-top .seg{flex:1}
+.verdict{display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:14px; font-weight:600}
+.verdict.good{background:var(--sage-soft)} .verdict.mixed{background:var(--sun-soft)} .verdict.bad{background:var(--accent-soft)}
+.verdict .dotv{width:10px; height:10px; border-radius:50%}
+.ft-lead{margin:0; font-size:14px}
+.stab{display:flex; flex-direction:column; gap:6px; font-size:13px}
+.stab .r{display:grid; grid-template-columns:56px 1fr 92px; gap:10px; align-items:center}
+.stab .bars{position:relative; height:14px}
+.stab .bars i{position:absolute; left:0; height:6px; border-radius:3px}
+.stab .bars i.tr{top:0; background:var(--accent)} .stab .bars i.fp{top:8px; background:var(--ew)}
+.stab .v{text-align:right; font-variant-numeric:tabular-nums; color:var(--muted)}
+
+/* Result view switcher */
+.viewbar-row{display:flex; align-items:center; gap:16px}
+.viewbar{display:flex; gap:4px; background:var(--surface-2); border-radius:16px; padding:5px}
+.viewbar button{display:flex; align-items:center; gap:10px; border:0; background:none; border-radius:12px; padding:8px 14px 8px 10px; cursor:pointer; text-align:left; color:var(--muted)}
+.viewbar button b{display:block; font-weight:600; font-size:14px; color:inherit; line-height:1.25}
+.viewbar button small{display:block; font-size:12px; line-height:1.25}
+.viewbar .vb-ico{width:32px; height:32px; border-radius:10px; display:grid; place-items:center; background:var(--surface-3); flex:none}
+.viewbar kbd{font:600 11px/1 var(--font-body); padding:3px 6px; border-radius:6px; border:1px solid var(--line); color:var(--muted); margin-left:6px}
+.viewbar button[aria-selected="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.viewbar button[aria-selected="true"] .vb-ico{background:var(--accent-soft); color:var(--accent)}
+.viewbar button[aria-selected="true"] small{color:var(--muted)}
+.grid-c{display:grid; grid-template-columns:minmax(0,4fr) minmax(0,6fr); gap:16px}
+.perf td:first-child{color:var(--muted)}
+.perf td b{font-weight:600}
+
+@media (max-width:1240px){ .kpis{grid-template-columns:repeat(2, minmax(0,1fr))} .grid-a,.grid-b,.grid-c{grid-template-columns:minmax(0,1fr)} .viewbar small,.viewbar kbd{display:none} }
+@media (max-width:640px){ .viewbar{width:100%} .viewbar button{flex:1; justify-content:center; padding:8px} .viewbar .vb-ico{display:none} }
+@media (max-width:980px){ .shell{grid-template-columns:minmax(0,1fr)} .rail{position:static} }
+@media (max-width:640px){
+  .topbar-in{gap:12px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px))}
+  .brand span{display:none}
+  .nav button{padding:7px 10px}
+  .shell{padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px))}
+  .kpis{grid-template-columns:minmax(0,1fr)}
+  .page-head h1{font-size:28px}
+  .alloc{grid-template-columns:minmax(0,1fr)}
+  .chart{height:320px}
+  .avatar{display:none} .btn-ghost .lbl,.user div{display:none} .user{border-left:0; padding-left:0}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important} }
+</style>
+</head><body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="13" fill="var(--accent)"/><path d="M6 19 C10 18, 12 10, 22 8" stroke="var(--on-accent)" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="17" cy="11" r="2.6" fill="var(--on-accent)"/></svg>
+      <span>Optimo</span>
+    </div>
+    <nav class="nav" role="tablist" aria-label="Views">
+      <button role="tab" id="tab-opt" aria-selected="true" data-view="opt">Optimizer</button>
+      <button role="tab" id="tab-scen" aria-selected="false" data-view="scen">My scenarios <span id="scenCount" class="num" style="color:var(--muted)">(2)</span></button>
+    </nav>
+    <div class="top-right">
+      <button class="btn-ghost" id="helpBtn" aria-haspopup="dialog">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        <span class="lbl">How it works</span></button>
+      <button class="btn-ghost btn-ai" id="aiBtn" aria-haspopup="dialog">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>
+        <span class="lbl">AI Assistant</span><span class="soon">Soon</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch light or dark theme" title="Switch theme">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <div class="user"><div class="avatar" aria-hidden="true">AT</div><div><b>Andie Tran</b><small>Signed in</small></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- INPUT RAIL -->
+  <aside class="card rail" aria-label="Portfolio inputs">
+    <div class="field">
+      <div class="label">Holdings <span class="count num" id="tkCount">4 / 10</span></div>
+      <div class="chips" id="chips"></div>
+      <div class="add-row">
+        <input class="input" id="tkInput" list="tkList" placeholder="Add ticker, e.g. NVDA" autocomplete="off" aria-label="Add ticker">
+        <button class="btn" id="tkAdd" style="height:40px">Add</button>
+      </div>
+      <datalist id="tkList"></datalist>
+      <p class="hint" id="tkMsg">Search any ticker on Yahoo Finance. Up to 10.</p>
+    </div>
+
+    <div class="field">
+      <div class="label">Look-back period</div>
+      <div class="seg" id="period" role="group" aria-label="Look-back period">
+        <button data-y="1" aria-pressed="false">1Y</button><button data-y="2" aria-pressed="true">2Y</button><button data-y="3" aria-pressed="false">3Y</button><button data-y="5" aria-pressed="false">5Y</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="amount">Investment</label>
+      <div class="input-prefix"><span>USD</span><input class="input num" id="amount" type="number" min="1000" step="1000" value="10000"></div>
+    </div>
+
+    <div class="field">
+      <div class="label">Goal <button class="info tr" data-tip="Both goals test the same 10,000 random portfolios. They differ only in how the winner is picked." aria-label="About goals">i</button></div>
+      <div class="goal" role="radiogroup">
+        <label><input type="radio" name="goal" id="goalSharpe" value="sharpe" checked><span><strong>Best risk-adjusted return</strong><small>Highest Sharpe ratio: the most return per unit of risk.</small></span></label>
+        <label><input type="radio" name="goal" id="goalRet" value="ret"><span><strong>Best return within a risk limit</strong><small>Highest expected return with volatility at or below your limit.</small></span></label>
+      </div>
+      <div id="capWrap" hidden>
+        <div class="label" style="margin-bottom:6px">Volatility limit</div>
+        <div class="range-row"><input type="range" id="volCap" min="10" max="60" step="1" value="25" aria-label="Volatility limit"><output id="volCapOut" class="num">25%</output></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="two">
+      <div class="field">
+        <label class="label" for="rf">Risk-free <button class="info tr" data-tip="Return you could earn with no risk, e.g. a 1-year government bond. It is subtracted from return before computing Sharpe." aria-label="About risk-free rate">i</button></label>
+        <div class="input-suffix"><input class="input num" id="rf" type="number" min="0" max="10" step="0.25" value="4"><span>%</span></div>
+      </div>
+      <div class="field">
+        <label class="label" for="maxW">Max / stock</label>
+        <div class="input-suffix"><input class="input num" id="maxW" type="number" min="25" max="100" step="5" value="60"><span>%</span></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="runBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>
+      <span>Run optimisation</span>
+    </button>
+    <div class="two">
+      <button class="btn" id="saveBtn">Save scenario</button>
+      <button class="btn" id="csvBtn">Copy CSV</button>
+    </div>
+    <form class="save-form" id="saveForm" hidden>
+      <input class="input" id="saveName" aria-label="Scenario name" placeholder="Scenario name">
+      <button class="btn" type="submit" style="height:40px">Save</button>
+    </form>
+  </aside>
+
+  <!-- OPTIMIZER VIEW -->
+  <main class="main" id="viewOpt">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Welcome back, Andie</div>
+        <h1 id="pageTitle">Your optimised portfolio</h1>
+        <div class="meta num" id="meta"></div>
+      </div>
+      <div class="badges">
+        <span class="badge stale" id="staleBadge" hidden>Inputs changed. Run to update.</span>
+        <div class="cmp"><span class="label">Compare with</span><div class="seg mini" id="cmpSeg" role="group" aria-label="Compare headline numbers with"><button data-c="ew" aria-pressed="true">Equal weight</button><button data-c="bench" aria-pressed="false">S&amp;P 500</button></div></div>
+        <span class="badge">Sample data · not investment advice</span>
+      </div>
+    </div>
+
+    <section class="kpis" aria-label="Key results">
+      <div class="card kpi">
+        <div class="kpi-top"><span class="kpi-ico" style="background:var(--blush)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>Expected return
+          <button class="info tl" data-tip="Average daily return over the look-back period, scaled to a year (× 252 trading days)." aria-label="About expected return">i</button></div>
+        <div class="kpi-val" id="kRet">–</div><div class="kpi-delta" id="dRet"></div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-top"><span class="kpi-ico" style="background:var(--sky)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12h3l3-8 4 16 3-8h7"/></svg></span>Volatility
+          <button class="info tl" data-tip="How much the portfolio value swings, as the annualised standard deviation of daily returns. Lower means a smoother ride." aria-label="About volatility">i</button></div>
+        <div class="kpi-val" id="kVol">–</div><div class="kpi-delta" id="dVol"></div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-top"><span class="kpi-ico" style="background:var(--sage-soft)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5M5 8l-2 6h4zM19 8l-2 6h4z"/></svg></span>Sharpe ratio
+          <button class="info tl" data-tip="(Expected return − risk-free rate) ÷ volatility. Above 1 is strong; below 0.5 means little reward for the risk taken." aria-label="About Sharpe ratio">i</button></div>
+        <div class="kpi-val" id="kSh">–</div><div class="kpi-delta" id="dSh"></div>
+      </div>
+      <div class="card kpi">
+        <div class="kpi-top"><span class="kpi-ico" style="background:var(--sun-soft)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></svg></span>Value today
+          <button class="info tl" data-tip="What your investment would be worth now if you had bought these weights at the start of the period and held them." aria-label="About value today">i</button></div>
+        <div class="kpi-val" id="kVal">–</div><div class="kpi-delta" id="dVal"></div>
+      </div>
+    </section>
+
+    <div class="viewbar-row">
+      <div class="viewbar" role="tablist" aria-label="Result views">
+        <button role="tab" id="vt-opt" aria-selected="true" aria-controls="pane-opt" data-pane="opt">
+          <span class="vb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="17" r="1.5"/><circle cx="10" cy="11" r="1.5"/><circle cx="15" cy="7" r="1.5"/><circle cx="19" cy="5" r="1.5"/><circle cx="14" cy="15" r="1.5"/></svg></span>
+          <span><b>Optimisation</b><small>Frontier and allocation</small></span><kbd>1</kbd></button>
+        <button role="tab" id="vt-perf" aria-selected="false" aria-controls="pane-perf" data-pane="perf">
+          <span class="vb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/></svg></span>
+          <span><b>Performance</b><small>Growth, benchmark and forward test</small></span><kbd>2</kbd></button>
+        <button role="tab" id="vt-risk" aria-selected="false" aria-controls="pane-risk" data-pane="risk">
+          <span class="vb-ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          <span><b>Risk and diversification</b><small>Correlation and per-stock metrics</small></span><kbd>3</kbd></button>
+      </div>
+    </div>
+
+    <section class="grid-a pane" id="pane-opt" role="tabpanel" aria-labelledby="vt-opt">
+      <div class="card">
+        <div class="card-head">
+          <h2>Efficient frontier</h2>
+          <button class="info tr" data-tip="Each dot is one random portfolio. Up means more return, right means more risk. The best portfolios sit on the upper-left edge." aria-label="About the efficient frontier">i</button>
+          <div class="right">
+            <span class="legend-item"><span class="sw" style="background:var(--accent)"></span><span id="lgOpt">Optimal</span></span>
+            <span class="legend-item"><span class="sw dia" style="background:var(--ink)"></span>Equal weight</span>
+            <span class="legend-item"><span class="sw" style="background:var(--bench); border-radius:2px"></span>S&amp;P 500</span>
+          </div>
+          <div class="sub num" id="frontSub">10,000 scenarios · click any dot to inspect it</div>
+        </div>
+        <div class="chart" id="cFront" role="img" aria-label="Scatter chart of risk versus return for every scenario"></div>
+        <div class="pick" id="pick" hidden></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Allocation</h2><div class="right"><span id="allocMode">Optimal weights</span></div></div>
+        <div class="alloc">
+          <div class="donut" id="cDonut" role="img" aria-label="Donut chart of portfolio weights"></div>
+          <div class="tbl-wrap">
+            <table aria-label="Weights per stock">
+              <thead><tr><th>Stock</th><th>Weight</th><th>vs equal</th><th>Amount</th><th>Shares</th></tr></thead>
+              <tbody id="allocBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-b pane" id="pane-perf" role="tabpanel" aria-labelledby="vt-perf" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2>Growth of your investment</h2>
+          <div class="right">
+            <span class="legend-item"><span class="sw line" style="background:var(--accent)"></span><span id="growthLg1">Optimised</span></span>
+            <span class="legend-item"><span class="sw line" style="background:var(--ew)"></span>Equal weight</span>
+            <span class="legend-item"><span class="sw line" style="background:var(--bench)"></span>S&amp;P 500</span>
+          </div>
+          <div class="sub" id="growthSub">Buy and hold from the first day of the period, no rebalancing</div>
+        </div>
+        <div class="chart" id="cGrowth" role="img" aria-label="Line chart of portfolio value over time"></div>
+      </div>
+      <div class="card ft">
+        <div class="card-head">
+          <div class="seg mini" id="perfMode" role="group" aria-label="Card view"><button data-m="sum" aria-pressed="true">Summary</button><button data-m="ft" aria-pressed="false">Forward test</button></div>
+          <button class="info tl" data-tip="Optimo picks weights using only the data before the shaded zone, then checks how those weights did on the shaded months it never saw." aria-label="About the forward test">i</button>
+        </div>
+        <div id="sumPane">
+          <p class="hint" style="margin:0 0 4px">Full look-back period, same starting amount</p>
+          <table class="perf" aria-label="Performance summary">
+            <thead><tr><th>Measure</th><th><span class="legend-item"><span class="sw" style="background:var(--accent)"></span>Optimo</span></th><th>Equal</th><th>S&amp;P 500</th></tr></thead>
+            <tbody id="perfBody"></tbody>
+          </table>
+        </div>
+        <div id="ftPane" class="ft" hidden>
+        <div class="ft-top">
+          <div class="label">Test on the last</div>
+          <div class="seg" id="ftSeg" role="group" aria-label="Test period length"><button data-d="63" aria-pressed="false">3M</button><button data-d="126" aria-pressed="true">6M</button><button data-d="252" aria-pressed="false">12M</button></div>
+        </div>
+        <div class="verdict" id="ftVerdict"></div>
+        <p class="ft-lead" id="ftLead"></p>
+        <table class="perf" aria-label="Forward test results">
+          <thead><tr><th>Unseen period</th><th><span class="legend-item"><span class="sw" style="background:var(--accent)"></span>Optimo</span></th><th>Equal</th><th>S&amp;P 500</th></tr></thead>
+          <tbody id="ftBody"></tbody>
+        </table>
+        <div class="label" style="margin-top:14px">Weight stability <button class="info tl" data-tip="Weights picked on the training data vs on the full period. Small shifts mean the result is robust; large swings mean it depends heavily on the dates chosen." aria-label="About weight stability">i</button>
+          <span class="count" style="display:flex; gap:12px"><span class="legend-item"><span class="sw line" style="background:var(--accent)"></span>Training</span><span class="legend-item"><span class="sw line" style="background:var(--ew)"></span>Full period</span></span></div>
+        <div id="ftStab" class="stab"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-c pane" id="pane-risk" role="tabpanel" aria-labelledby="vt-risk" hidden>
+      <div class="card">
+        <div class="card-head"><h2>Correlation</h2>
+          <button class="info tr" data-tip="How closely two stocks move together, from −1 (opposite) to +1 (in lockstep). Low correlation is what makes diversification work." aria-label="About correlation">i</button>
+          <div class="sub">Daily returns, look-back period</div></div>
+        <div class="chart" id="cHeat" role="img" aria-label="Heatmap of correlations between stocks"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Per-stock metrics</h2><div class="sub">Annualised over the look-back period · bar shows optimised weight, tick marks equal weight</div></div>
+        <div class="tbl-wrap">
+          <table aria-label="Metrics per stock">
+            <thead><tr><th>Stock</th><th>Last price</th><th>Period return</th><th>Ann. return</th><th>Volatility</th><th>Sharpe</th><th>Weight</th></tr></thead>
+            <tbody id="stockBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- SCENARIOS VIEW -->
+  <main class="main" id="viewScen" hidden>
+    <div class="page-head">
+      <div><div class="eyebrow">Saved work</div><h1>My scenarios</h1><div class="meta">Reopen a saved run to review or tweak it.</div></div>
+    </div>
+    <section class="card">
+      <div class="tbl-wrap">
+        <table aria-label="Saved scenarios">
+          <thead><tr><th>Scenario</th><th>Holdings</th><th>Goal</th><th>Return</th><th>Volatility</th><th>Sharpe</th><th>Saved</th><th></th></tr></thead>
+          <tbody id="scenBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<aside class="drawer" id="helpDrawer" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+  <div class="drawer-head"><h2 id="helpTitle">How Optimo works</h2>
+    <button class="icon-btn" data-close aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="drawer-body">
+    <p class="lead">Optimo tests thousands of ways to split your money across a set of stocks, then shows the split that best fits your goal and how it compares with simply splitting equally.</p>
+    <h3>Workflow</h3>
+    <ol class="steps">
+      <li><span><b>Pick your stocks.</b> Add 2 to 10 tickers you would actually hold. Optimo only changes the weights; it never adds new names.</span></li>
+      <li><span><b>Set the look-back period.</b> Daily prices from this window feed every number. A longer period smooths out short bursts but can include older market conditions.</span></li>
+      <li><span><b>Set your assumptions.</b> Investment amount, risk-free rate (today's safe return, used in Sharpe) and the maximum weight per stock, which stops the result piling into one name.</span></li>
+      <li><span><b>Choose a goal.</b> <i>Best risk-adjusted return</i> picks the highest Sharpe ratio. <i>Best return within a risk limit</i> picks the highest return whose volatility stays at or below your limit.</span></li>
+      <li><span><b>Run the optimisation.</b> Optimo creates 10,000 random weightings that each add up to 100%, scores them all, and picks the winner.</span></li>
+      <li><span><b>Review, then save or export.</b> Compare with equal weight, click other dots to explore alternatives, then save the run or copy the weights.</span></li>
+    </ol>
+    <h3>Reading the results</h3>
+    <dl class="gloss">
+      <div><dt>Headline cards</dt><dd>Return, volatility, Sharpe and today's value for the chosen portfolio. The line underneath shows the gap to equal weight: green is better, red is worse. For volatility, lower is better.</dd></div>
+      <div><dt>Efficient frontier</dt><dd>Each dot is one tested portfolio. Higher means more return, further right means more risk, darker green means a better Sharpe. The strongest options sit on the upper-left edge. The orange dot is your result; the black diamond is equal weight.</dd></div>
+      <div><dt>Allocation</dt><dd>How much of your money goes into each stock, in percent, dollars and approximate shares, plus the shift versus equal weight.</dd></div>
+      <div><dt>Growth of your investment</dt><dd>What the amount would have become if you had bought these weights on the first day and held them, next to equal weight and the S&amp;P 500. Look at the dips as well as the end value.</dd></div>
+      <div><dt>Forward test</dt><dd>Optimo picks weights using only the earlier data, then checks them on the last 3, 6 or 12 months it never saw. If they still beat equal weight there, the result is more trustworthy. Weight stability shows how much the weights move between the two runs.</dd></div>
+      <div><dt>Correlation</dt><dd>How closely stocks move together. Pairs near 1 offer little diversification; low or negative pairs are what lets the optimiser cut risk.</dd></div>
+      <div><dt>Per-stock metrics</dt><dd>Each stock on its own. A stock with a weak Sharpe often ends up with a small weight, unless it diversifies the rest.</dd></div>
+    </dl>
+    <h3>Rules of thumb</h3>
+    <ul class="rules">
+      <li>Sharpe above 1 is strong, 0.5 to 1 is reasonable, below 0.5 is a weak reward for the risk.</li>
+      <li>A near-zero weight means the stock added risk without enough return over this period, not that it is a bad company.</li>
+      <li>Re-run with a different look-back period. If the weights swing a lot, treat the result as fragile.</li>
+      <li>Results describe the past. They are a starting point for discussion, not a forecast.</li>
+    </ul>
+    <h3>Method</h3>
+    <p style="margin:0">10,000 random weightings, each summing to 100% with none above your per-stock limit, are scored on annualised return, volatility and Sharpe using 252 trading days. Prices are daily adjusted closes from Yahoo Finance (simulated in this mockup).</p>
+    <p class="note">Optimo is an analysis tool and does not give investment advice.</p>
+  </div>
+</aside>
+
+<aside class="drawer" id="aiDrawer" role="dialog" aria-modal="true" aria-labelledby="aiTitle" hidden>
+  <div class="drawer-head"><h2 id="aiTitle">AI Assistant</h2><span class="soon">Coming soon</span>
+    <button class="icon-btn" data-close aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="drawer-body" id="aiLog">
+    <div class="bubble bot">Hi Andie, I'm your portfolio assistant. Soon I'll be able to explain your results, answer questions about the stocks you hold and set up new scenarios for you.</div>
+    <div class="label" style="margin-top:6px">Try asking</div>
+    <div class="prompts" id="aiPrompts">
+      <button>Why does the optimal portfolio hold so little AMD?</button>
+      <button>Explain my Sharpe ratio in plain English</button>
+      <button>Find the best portfolio with volatility under 20%</button>
+      <button>Compare this run with my saved “Big Tech core” scenario</button>
+    </div>
+  </div>
+  <form class="composer" id="aiForm">
+    <input class="input" id="aiInput" placeholder="Ask about your portfolio" aria-label="Message the AI Assistant">
+    <button class="btn btn-primary" type="submit" style="height:44px">Send</button>
+  </form>
+</aside>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script>
+(() => {
+/* ---------- Sample universe (simulated; the app will use Yahoo Finance) ---------- */
+const U = {
+  AMD:{name:'Advanced Micro Devices', mu:.24, sig:.50, p0:96, beta:1.45},
+  AAPL:{name:'Apple', mu:.12, sig:.27, p0:172, beta:1.05},
+  MSFT:{name:'Microsoft', mu:.10, sig:.25, p0:330, beta:1.0},
+  ORCL:{name:'Oracle', mu:.20, sig:.33, p0:108, beta:.9},
+  NVDA:{name:'NVIDIA', mu:.35, sig:.52, p0:48, beta:1.5},
+  GOOGL:{name:'Alphabet', mu:.20, sig:.29, p0:138, beta:1.0},
+  AMZN:{name:'Amazon', mu:.22, sig:.31, p0:145, beta:1.1},
+  ASML:{name:'ASML Holding', mu:.16, sig:.36, p0:690, beta:1.2},
+  NEE:{name:'NextEra Energy', mu:.10, sig:.22, p0:62, beta:.45},
+  TSLA:{name:'Tesla', mu:.18, sig:.60, p0:240, beta:1.4},
+  SU:{name:'Schneider Electric', mu:.18, sig:.24, p0:190, beta:.85},
+  VWS:{name:'Vestas Wind Systems', mu:.05, sig:.40, p0:24, beta:.8},
+};
+const DEFAULT = ['AMD','AAPL','MSFT','ORCL'];
+const BENCH = {name:'S&P 500', mu:.11, sig:.17, p0:470};
+const END = new Date(Date.UTC(2026,10,20));
+const SCEN = 10000, TD = 252;
+
+const state = { cmp:'ew', tickers:[...DEFAULT], years:2, amount:10000, goal:'sharpe', volCap:.25, rf:.04, maxW:.60, picked:null, chosen:null };
+let R = null; // last results
+let dirty = false;
+
+/* ---------- RNG ---------- */
+function hash(s){let h=2166136261; for(const c of s){h^=c.charCodeAt(0); h=Math.imul(h,16777619);} return h>>>0;}
+function rng(seed){let a=seed>>>0; return ()=>{a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296;};}
+function gauss(r){let u=0,v=0; while(!u)u=r(); while(!v)v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+/* ---------- Data ---------- */
+function businessDays(n){const d=[]; const t=new Date(END); while(d.length<n){const w=t.getUTCDay(); if(w&&w<6)d.push(new Date(t)); t.setUTCDate(t.getUTCDate()-1);} return d.reverse();}
+function simulate(years){
+  const N = TD*years+1, dates = businessDays(N);
+  const mr = rng(hash('mkt'+years)); const mSig=.011; const mkt = Array.from({length:N},()=>gauss(mr)*mSig);
+  const prices = {};
+  for(const t of Object.keys(U)){
+    const u=U[t], r=rng(hash(t+years)); const idio=Math.sqrt(Math.max(u.sig*u.sig/TD - u.beta*u.beta*mSig*mSig, 1e-6));
+    const p=[u.p0]; for(let i=1;i<N;i++){const ret=u.mu/TD + u.beta*mkt[i] + gauss(r)*idio; p.push(p[i-1]*(1+ret));}
+    prices[t]=p;
+  }
+  { const r=rng(hash('SPY'+years)); const idio=Math.sqrt(Math.max(BENCH.sig*BENCH.sig/TD - mSig*mSig, 1e-7)); const p=[BENCH.p0];
+    for(let i=1;i<N;i++) p.push(p[i-1]*(1+BENCH.mu/TD + mkt[i] + gauss(r)*idio)); prices.__BENCH=p; }
+  return {dates, prices};
+}
+
+function compute(){
+  const T = state.tickers, n=T.length;
+  const {dates, prices} = simulate(state.years);
+  const P = T.map(t=>prices[t]); const N=dates.length;
+  const ret = P.map(p=>{const a=[]; for(let i=1;i<N;i++)a.push(p[i]/p[i-1]-1); return a;});
+  const M = ret.length? ret[0].length:0;
+  const mean = ret.map(a=>a.reduce((s,x)=>s+x,0)/M);
+  const cov = T.map((_,i)=>T.map((_,j)=>{let s=0; for(let k=0;k<M;k++)s+=(ret[i][k]-mean[i])*(ret[j][k]-mean[j]); return s/(M-1);}));
+  const corr = cov.map((row,i)=>row.map((c,j)=>c/Math.sqrt(cov[i][i]*cov[j][j])));
+  const muA = mean.map(m=>m*TD), covA = cov.map(r=>r.map(c=>c*TD));
+  const stats = w => { let r=0,v=0; for(let i=0;i<n;i++){r+=w[i]*muA[i]; for(let j=0;j<n;j++)v+=w[i]*w[j]*covA[i][j];} const vol=Math.sqrt(v); return {r, vol, sh:(r-state.rf)/vol}; };
+
+  // Monte Carlo, notebook-style: uniform randoms normalised to sum 1, rejected if any weight exceeds the cap
+  const rand = rng(3); const W=new Float64Array(SCEN*n), RET=new Float64Array(SCEN), VOL=new Float64Array(SCEN), SH=new Float64Array(SCEN);
+  let k=0, tries=0; const cap=state.maxW+1e-9; const w=new Array(n);
+  while(k<SCEN && tries<600000){
+    tries++; let s=0; for(let i=0;i<n;i++){w[i]=rand(); s+=w[i];}
+    let mx=0; for(let i=0;i<n;i++){w[i]/=s; if(w[i]>mx)mx=w[i];}
+    if(mx>cap) continue;
+    const st=stats(w); for(let i=0;i<n;i++)W[k*n+i]=w[i]; RET[k]=st.r; VOL[k]=st.vol; SH[k]=st.sh; k++;
+  }
+  const K=k;
+  const ew = new Array(n).fill(1/n), ewS = stats(ew);
+  let opt=-1, note='';
+  if(state.goal==='sharpe'){ let b=-Infinity; for(let i=0;i<K;i++) if(SH[i]>b){b=SH[i]; opt=i;} }
+  else { let b=-Infinity; for(let i=0;i<K;i++) if(VOL[i]<=state.volCap && RET[i]>b){b=RET[i]; opt=i;}
+    if(opt<0){ let lo=Infinity; for(let i=0;i<K;i++) if(VOL[i]<lo){lo=VOL[i]; opt=i;} note='No scenario meets the volatility limit. Showing the lowest-risk portfolio instead.'; } }
+  const lastPx = P.map(p=>p[N-1]), firstPx=P.map(p=>p[0]);
+  const perStock = T.map((t,i)=>({t, last:lastPx[i], period:lastPx[i]/firstPx[i]-1, r:muA[i], vol:Math.sqrt(covA[i][i]), sh:(muA[i]-state.rf)/Math.sqrt(covA[i][i])}));
+  const BP=prices.__BENCH, br=[]; for(let i=1;i<N;i++)br.push(BP[i]/BP[i-1]-1); const bm=br.reduce((a,b)=>a+b,0)/br.length; const bsd=Math.sqrt(br.reduce((a,b)=>a+(b-bm)**2,0)/(br.length-1));
+  const bench={P:BP, r:bm*TD, vol:bsd*Math.sqrt(TD)}; bench.sh=(bench.r-state.rf)/bench.vol;
+  return {T,n,dates,P,N,corr,W,RET,VOL,SH,K,ew,ewS,opt,note,perStock,stats,firstPx,lastPx,bench};
+}
+const weightsOf = (idx) => idx<0 ? R.ew : Array.from(R.W.slice(idx*R.n, idx*R.n+R.n));
+const benchGrowth=()=>R.bench.P.map(p=>p/R.bench.P[0]*state.amount);
+function growth(w){ const out=new Array(R.N); for(let d=0;d<R.N;d++){let v=0; for(let i=0;i<R.n;i++)v+=w[i]*R.P[i][d]/R.firstPx[i]; out[d]=v*state.amount;} return out; }
+
+/* ---------- Formatting ---------- */
+const nf0 = new Intl.NumberFormat('de-CH',{maximumFractionDigits:0});
+const nf2 = new Intl.NumberFormat('de-CH',{minimumFractionDigits:2, maximumFractionDigits:2});
+const money = v => 'USD ' + nf0.format(Math.round(v));
+const pct = (v,d=1) => (v*100).toFixed(d)+'%';
+const sgn = (v,d=1) => (v>=0?'+':'−')+Math.abs(v).toFixed(d);
+const dfmt = d => d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Theme tokens for charts ---------- */
+function tok(){ const s=getComputedStyle(document.documentElement); const g=n=>s.getPropertyValue(n).trim();
+  return {bg:g('--bg'), surface:g('--surface'), s2:g('--surface-2'), ink:g('--ink'), muted:g('--muted'), line:g('--line'), accent:g('--accent'), ew:g('--ew'), bench:g('--bench'),
+    ramp:[1,2,3,4,5].map(i=>g('--ramp-'+i)), div:[g('--div-neg'),g('--div-mid'),g('--div-pos')], series:[1,2,3,4,5,6,7,8,9,10].map(i=>g('--s'+i))}; }
+const colorOf = (t) => tok().series[Object.keys(U).indexOf(t) % 10];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FONT = 'Inter, system-ui, sans-serif';
+
+const charts = {};
+function chart(id){ if(!charts[id]) charts[id]=echarts.init($(id), null, {renderer:'canvas'}); return charts[id]; }
+const ro = new ResizeObserver(()=>Object.values(charts).forEach(c=>c.resize()));
+['cFront','cDonut','cGrowth','cHeat'].forEach(id=>ro.observe($(id)));
+
+/* ---------- Render ---------- */
+function current(){ return state.chosen!=null ? state.chosen : R.opt; }
+
+function renderKPIs(){
+  const idx=current(), w=weightsOf(idx), s=R.stats(w), B=state.cmp==='bench';
+  const e=B?R.bench:R.ewS; const g=growth(w), ge=B?benchGrowth():growth(R.ew); const v=g[R.N-1], ve=ge[R.N-1];
+  $('kRet').textContent=pct(s.r); $('kVol').textContent=pct(s.vol); $('kSh').textContent=nf2.format(s.sh); $('kVal').textContent=money(v);
+  const d=(val,goodUp,txt)=>{const cls=Math.abs(val)<1e-9?'flat':((val>0)===goodUp?'good':'bad'); const arr=Math.abs(val)<1e-9?'':(val>0?'↑':'↓'); return `<span class="delta ${cls}">${arr} ${txt}</span><span>vs ${B?'S&amp;P 500':'equal weight'}</span>`;};
+  $('dRet').innerHTML=d(s.r-e.r,true,sgn((s.r-e.r)*100)+' pts');
+  $('dVol').innerHTML=d(s.vol-e.vol,false,sgn((s.vol-e.vol)*100)+' pts');
+  $('dSh').innerHTML=d(s.sh-e.sh,true,sgn(s.sh-e.sh,2));
+  $('dVal').innerHTML=d(v-ve,true,(v-ve>=0?'+':'−')+nf0.format(Math.abs(Math.round(v-ve))));
+}
+
+function renderFront(){
+  const t=tok(), c=chart('cFront');
+  const pts=new Array(R.K); let mn=Infinity,mx=-Infinity;
+  for(let i=0;i<R.K;i++){pts[i]=[R.VOL[i],R.RET[i],R.SH[i],i]; if(R.SH[i]<mn)mn=R.SH[i]; if(R.SH[i]>mx)mx=R.SH[i];}
+  const idx=current(), ow=weightsOf(idx), os=R.stats(ow);
+  const tipBox = (title,s,w)=>`<div style="font-family:${FONT};min-width:180px"><div style="font-weight:600;margin-bottom:4px">${title}</div>
+    <div style="display:grid;grid-template-columns:auto auto;gap:2px 14px;font-variant-numeric:tabular-nums"><span style="color:${t.muted}">Return</span><b style="text-align:right">${pct(s.r)}</b><span style="color:${t.muted}">Volatility</span><b style="text-align:right">${pct(s.vol)}</b><span style="color:${t.muted}">Sharpe</span><b style="text-align:right">${nf2.format(s.sh)}</b></div>
+    <div style="border-top:1px solid ${t.line};margin-top:6px;padding-top:6px;display:grid;grid-template-columns:auto auto;gap:2px 14px;font-variant-numeric:tabular-nums">${R.T.map((tk,i)=>`<span>${tk}</span><span style="text-align:right">${pct(w[i])}</span>`).join('')}</div></div>`;
+  const markLine = state.goal==='ret' ? {silent:true, symbol:'none', lineStyle:{color:t.accent, type:'dashed', width:1.5},
+    label:{formatter:'Volatility limit '+pct(state.volCap,0), color:t.accent, fontFamily:FONT, fontWeight:600, position:'insideEndTop'}, data:[{xAxis:state.volCap}]} : undefined;
+  c.setOption({
+    animation:!reduce, textStyle:{fontFamily:FONT},
+    grid:{left:58, right:84, top:28, bottom:52},
+    xAxis:{type:'value', scale:true, name:'Volatility (annualised)', nameLocation:'middle', nameGap:32, nameTextStyle:{color:t.muted},
+      axisLabel:{color:t.muted, formatter:v=>Math.round(v*100)+'%'}, axisLine:{lineStyle:{color:t.line}}, axisTick:{show:false}, splitLine:{lineStyle:{color:t.line, type:[3,4]}}},
+    yAxis:{type:'value', scale:true, name:'Expected return', nameLocation:'middle', nameGap:44, nameTextStyle:{color:t.muted},
+      axisLabel:{color:t.muted, formatter:v=>Math.round(v*100)+'%'}, axisLine:{show:false}, axisTick:{show:false}, splitLine:{lineStyle:{color:t.line, type:[3,4]}}},
+    visualMap:{type:'continuous', dimension:2, seriesIndex:0, min:mn, max:mx, inRange:{color:t.ramp}, right:4, top:'middle', itemHeight:150, itemWidth:10,
+      text:['High Sharpe','Low'], textStyle:{color:t.muted, fontSize:11, fontFamily:FONT}, calculable:false},
+    tooltip:{trigger:'item', backgroundColor:t.surface, borderColor:t.line, textStyle:{color:t.ink}, extraCssText:'border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)',
+      formatter:p=>{ if(p.seriesIndex===1) return tipBox('Equal weight', R.ewS, R.ew); if(p.seriesIndex===3) return `<b>S&amp;P 500</b><br>Return ${pct(R.bench.r)} · Vol ${pct(R.bench.vol)} · Sharpe ${nf2.format(R.bench.sh)}`; const i=p.seriesIndex===2?idx:p.data[3]; const w=weightsOf(i); return tipBox(p.seriesIndex===2?(state.chosen!=null?'Your pick':'Optimal'):'Scenario #'+(i+1), R.stats(w), w);} },
+    series:[
+      {type:'scatter', data:pts, symbolSize:4, itemStyle:{opacity:.9}, emphasis:{scale:2.4, itemStyle:{borderColor:t.ink, borderWidth:1}}, markLine, progressive:4000},
+      {type:'scatter', data:[[R.ewS.vol,R.ewS.r]], symbol:'diamond', symbolSize:17, z:5, itemStyle:{color:t.ink, borderColor:t.surface, borderWidth:2},
+        label:{show:true, formatter:'Equal weight', position:'left', color:t.ink, fontWeight:600, fontFamily:FONT, distance:8}},
+      {type:'scatter', data:[[os.vol,os.r]], symbolSize:22, z:6, itemStyle:{color:t.accent, borderColor:t.surface, borderWidth:3, shadowBlur:12, shadowColor:t.accent},
+        label:{show:true, formatter:state.chosen!=null?'Your pick':'Optimal', position:'top', color:t.accent, fontWeight:700, fontFamily:FONT, distance:8}},
+      {type:'scatter', data:[[R.bench.vol,R.bench.r]], symbol:'rect', symbolSize:13, z:5, itemStyle:{color:t.bench, borderColor:t.surface, borderWidth:2},
+        label:{show:true, formatter:'S&P 500', position:'right', color:t.bench, fontWeight:600, fontFamily:FONT, distance:8}},
+    ]
+  }, true);
+  $('frontSub').textContent = `${nf0.format(R.K).replace(/’/g,',')} scenarios · click any dot to inspect it` + (R.K<SCEN?` · fewer than 10,000 met your per-stock limit`:'');
+  $('lgOpt').textContent = state.chosen!=null ? 'Your pick' : 'Optimal';
+}
+
+function renderPick(){
+  const el=$('pick'); const i=state.picked;
+  if(i==null){ el.hidden=true; return; }
+  const w=weightsOf(i), s=R.stats(w);
+  el.hidden=false;
+  el.innerHTML = `<strong>Scenario #${i+1}</strong><span class="num">Return ${pct(s.r)} · Vol ${pct(s.vol)} · Sharpe ${nf2.format(s.sh)}</span>
+    <span class="w num">${R.T.map((t,k)=>`${t} ${pct(w[k],0)}`).join(' · ')}</span>
+    <span class="acts"><button class="btn" id="usePick">Use these weights</button><button class="btn" id="clearPick" aria-label="Close">✕</button></span>`;
+  $('usePick').onclick=()=>{ state.chosen=i; state.picked=null; renderAll(false); toast('Using scenario #'+(i+1)); };
+  $('clearPick').onclick=()=>{ state.picked=null; renderPick(); };
+}
+
+function renderAlloc(){
+  const t=tok(), w=weightsOf(current());
+  chart('cDonut').setOption({
+    animation:!reduce, textStyle:{fontFamily:FONT},
+    tooltip:{trigger:'item', backgroundColor:t.surface, borderColor:t.line, textStyle:{color:t.ink}, formatter:p=>`<b>${p.name}</b> ${pct(p.value)}`},
+    title:{text:String(R.n), subtext:'stocks', left:'center', top:'38%', textStyle:{color:t.ink, fontFamily:'Fraunces, Georgia, serif', fontSize:28, fontWeight:500}, subtextStyle:{color:t.muted, fontFamily:FONT}, itemGap:2},
+    series:[{type:'pie', radius:['62%','88%'], padAngle:2, itemStyle:{borderRadius:6}, label:{show:false},
+      data:R.T.map((tk,i)=>({name:tk, value:w[i], itemStyle:{color:colorOf(tk)}}))}]
+  }, true);
+  $('allocBody').innerHTML = R.T.map((tk,i)=>{ const amt=w[i]*state.amount, d=w[i]-1/R.n;
+    return `<tr><td><span class="tk"><span class="sw" style="background:${colorOf(tk)}"></span><b>${tk}</b></span></td>
+      <td><b>${pct(w[i])}</b></td><td class="${d>=0?'up':'down'}">${sgn(d*100)} pts</td><td>${money(amt)}</td><td>${nf2.format(amt/R.lastPx[i])}</td></tr>`;}).join('');
+  $('allocMode').textContent = state.chosen!=null ? 'Your pick' : (state.goal==='sharpe'?'Highest Sharpe':'Highest return ≤ '+pct(state.volCap,0)+' volatility');
+}
+
+function renderGrowthFull(){
+  const t=tok(), g=growth(weightsOf(current())), e=growth(R.ew);
+  const cats=R.dates.map(d=>d.toISOString().slice(0,10));
+  chart('cGrowth').setOption({
+    animation:!reduce, textStyle:{fontFamily:FONT},
+    grid:{left:70, right:96, top:16, bottom:30},
+    tooltip:{trigger:'axis', backgroundColor:t.surface, borderColor:t.line, textStyle:{color:t.ink},
+      formatter:ps=>`<div style="font-variant-numeric:tabular-nums"><div style="color:${t.muted};margin-bottom:4px">${dfmt(new Date(ps[0].axisValue))}</div>${ps.map(p=>`${p.marker} ${p.seriesName} <b style="float:right;margin-left:16px">${money(p.value)}</b>`).join('<br>')}</div>`},
+    xAxis:{type:'category', data:cats, boundaryGap:false, axisLine:{lineStyle:{color:t.line}}, axisTick:{show:false},
+      axisLabel:{color:t.muted, interval:Math.floor(cats.length/6), formatter:v=>new Date(v).toLocaleDateString('en-GB',{month:'short',year:'2-digit',timeZone:'UTC'})}},
+    yAxis:{type:'value', scale:true, axisLabel:{color:t.muted, formatter:v=>nf0.format(v)}, splitLine:{lineStyle:{color:t.line, type:[3,4]}}},
+    series:[
+      {name:'Optimised', type:'line', data:g.map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.accent, width:2.5}, itemStyle:{color:t.accent},
+        areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:t.accent+'33'},{offset:1,color:t.accent+'00'}])},
+        endLabel:{show:true, formatter:p=>money(p.value), color:t.accent, fontWeight:600, fontFamily:FONT}},
+      {name:'Equal weight', type:'line', data:e.map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.ew, width:2, type:[6,4]}, itemStyle:{color:t.ew}},
+      {name:'S&P 500', type:'line', data:benchGrowth().map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.bench, width:1.8}, itemStyle:{color:t.bench}},
+      {name:'Start', type:'line', data:[], markLine:{silent:true, symbol:'none', lineStyle:{color:t.muted, type:'dotted'}, label:{show:false}, data:[{yAxis:state.amount}]}}
+    ]
+  }, true);
+}
+
+function maxDD(a){ let pk=a[0], m=0; for(const v of a){ if(v>pk)pk=v; const d=v/pk-1; if(d<m)m=d; } return m; }
+function dayStats(a){ let best=-Infinity, worst=Infinity, up=0; for(let i=1;i<a.length;i++){ const r=a[i]/a[i-1]-1; if(r>best)best=r; if(r<worst)worst=r; if(r>0)up++; } return {best, worst, up:up/(a.length-1)}; }
+function renderPerfSummary(){
+  const st=[growth(weightsOf(current())), growth(R.ew), benchGrowth()].map(a=>({a, d:dayStats(a), dd:maxDD(a)}));
+  const row=(label,f,fmt)=>{ const vals=st.map(f), best=Math.max(...vals); return `<tr><td>${label}</td>${vals.map((v,i)=>`<td>${i===0?`<b class="${v===best?'up':'down'}">${fmt(v)}</b>`:fmt(v)}</td>`).join('')}</tr>`; };
+  $('perfBody').innerHTML=[
+    row('Value today', x=>x.a[R.N-1], money),
+    row('Total return', x=>x.a[R.N-1]/state.amount-1, v=>pct(v)),
+    row('Max drawdown', x=>x.dd, v=>pct(v)),
+    row('Best day', x=>x.d.best, v=>pct(v,2)),
+    row('Worst day', x=>x.d.worst, v=>pct(v,2)),
+    row('Days up', x=>x.d.up, v=>pct(v,0)),
+    row('Peak value', x=>Math.max(...x.a), money),
+  ].join('');
+}
+
+function renderHeat(){
+  const t=tok(), data=[];
+  R.T.forEach((_,i)=>R.T.forEach((_,j)=>data.push([j,i,+R.corr[i][j].toFixed(2)])));
+  chart('cHeat').setOption({
+    animation:!reduce, textStyle:{fontFamily:FONT},
+    grid:{left:56, right:12, top:8, bottom:32},
+    tooltip:{backgroundColor:t.surface, borderColor:t.line, textStyle:{color:t.ink}, formatter:p=>`${R.T[p.data[1]]} × ${R.T[p.data[0]]}: <b>${p.data[2].toFixed(2)}</b>`},
+    xAxis:{type:'category', data:R.T, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:t.ink, fontWeight:600}, splitArea:{show:false}},
+    yAxis:{type:'category', data:R.T, inverse:true, axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:t.ink, fontWeight:600}},
+    visualMap:{show:false, min:-1, max:1, inRange:{color:t.div}},
+    series:[{type:'heatmap', data, label:{show:R.n<=8, color:t.ink, fontSize:12, formatter:p=>p.data[2].toFixed(2)}, itemStyle:{borderColor:t.surface, borderWidth:3, borderRadius:6}}]
+  }, true);
+}
+
+function renderStocks(){
+  const w=weightsOf(current()), maxw=Math.max(...w, 1/R.n);
+  $('stockBody').innerHTML = R.perStock.map((s,i)=>`<tr>
+    <td><span class="tk"><span class="sw" style="background:${colorOf(s.t)}"></span><span><b>${s.t}</b><small>${esc(U[s.t].name)}</small></span></span></td>
+    <td>${nf2.format(s.last)}</td><td class="${s.period>=0?'up':'down'}">${s.period>=0?'↑':'↓'} ${pct(Math.abs(s.period))}</td>
+    <td>${pct(s.r)}</td><td>${pct(s.vol)}</td><td>${nf2.format(s.sh)}</td>
+    <td>${pct(w[i],0)}<span class="wbar" aria-hidden="true"><i style="width:${w[i]/maxw*100}%"></i><em style="left:${(1/R.n)/maxw*100}%"></em></span></td></tr>`).join('');
+}
+
+function renderMeta(){
+  const d0=R.dates[0], d1=R.dates[R.N-1];
+  $('meta').textContent = `${R.T.join(', ')} · ${dfmt(d0)} to ${dfmt(d1)} · ${money(state.amount)} · risk-free ${pct(state.rf,2).replace('.00','')}`;
+  $('pageTitle').textContent = R.note ? 'No portfolio meets your limit' : (state.chosen!=null ? 'Your custom portfolio' : 'Your optimised portfolio');
+  if(R.note) toast(R.note);
+}
+
+function renderAll(full=true){
+  renderKPIs(); renderFront(); renderPick(); renderAlloc(); renderGrowth(); renderPerf(); renderHeat(); renderStocks(); renderMeta();
+}
+
+/* ---------- Inputs ---------- */
+function setDirty(v=true){ dirty=v; $('staleBadge').hidden=!v; $('runBtn').classList.toggle('pulse', v); }
+function renderChips(){
+  $('chips').innerHTML = state.tickers.map(t=>`<span class="chip"><span class="dot" style="background:${colorOf(t)}"></span>${t}<button aria-label="Remove ${t}" data-rm="${t}">
+    <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></span>`).join('');
+  $('tkCount').textContent = `${state.tickers.length} / 10`;
+  $('tkList').innerHTML = Object.keys(U).filter(t=>!state.tickers.includes(t)).map(t=>`<option value="${t}">${esc(U[t].name)}</option>`).join('');
+  const minW = Math.ceil(100/state.tickers.length/5)*5; $('maxW').min=minW;
+  if(state.maxW*100<minW){ state.maxW=minW/100; $('maxW').value=minW; }
+}
+function msg(text, err=false){ const m=$('tkMsg'); m.textContent=text; m.classList.toggle('err', err); }
+$('chips').addEventListener('click', e=>{ const b=e.target.closest('[data-rm]'); if(!b) return;
+  if(state.tickers.length<=2){ msg('Keep at least 2 stocks to optimise.', true); return; }
+  state.tickers=state.tickers.filter(t=>t!==b.dataset.rm); renderChips(); msg('Removed '+b.dataset.rm+'.'); setDirty(); });
+function addTicker(){
+  const v=$('tkInput').value.trim().toUpperCase().split(/\s/)[0]; if(!v) return;
+  if(state.tickers.includes(v)) return msg(v+' is already in the list.', true);
+  if(state.tickers.length>=10) return msg('You can optimise up to 10 stocks. Remove one first.', true);
+  if(!U[v]) return msg(`${v} is not in the sample data. Try: ${Object.keys(U).filter(t=>!state.tickers.includes(t)).slice(0,4).join(', ')}.`, true);
+  state.tickers.push(v); $('tkInput').value=''; renderChips(); msg('Added '+v+' · '+U[v].name+'.'); setDirty();
+}
+$('tkAdd').onclick=addTicker; $('tkInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault(); addTicker();} });
+$('period').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return;
+  [...$('period').children].forEach(x=>x.setAttribute('aria-pressed', x===b)); state.years=+b.dataset.y; setDirty(); });
+$('amount').addEventListener('input', e=>{ const v=+e.target.value; if(v>0){state.amount=v; setDirty();} });
+$('rf').addEventListener('input', e=>{ state.rf=(+e.target.value||0)/100; setDirty(); });
+$('maxW').addEventListener('change', e=>{ let v=+e.target.value; const mn=+e.target.min; if(!(v>=mn))v=mn; if(v>100)v=100; e.target.value=v; state.maxW=v/100; setDirty(); });
+document.querySelectorAll('input[name=goal]').forEach(r=>r.addEventListener('change', e=>{ state.goal=e.target.value; $('capWrap').hidden=state.goal!=='ret'; setDirty(); }));
+$('volCap').addEventListener('input', e=>{ state.volCap=+e.target.value/100; $('volCapOut').textContent=e.target.value+'%'; setDirty(); });
+
+function run(){
+  const b=$('runBtn'); b.querySelector('span').textContent='Running…'; b.disabled=true;
+  setTimeout(()=>{ state.picked=null; state.chosen=null; R=compute(); renderAll(); setDirty(false);
+    b.querySelector('span').textContent='Run optimisation'; b.disabled=false; }, 30);
+}
+$('runBtn').onclick=run;
+
+/* ---------- Save / scenarios ---------- */
+const saved = [
+  {name:'Big Tech core', example:true, tickers:['AAPL','MSFT','GOOGL','AMZN','NVDA'], goal:'sharpe', r:.284, vol:.241, sh:1.01, at:'14 Nov 2026', cfg:{years:2, goal:'sharpe', rf:.04, maxW:.4, volCap:.25, amount:25000}},
+  {name:'Energy transition, low risk', example:true, tickers:['NEE','SU','VWS','ASML'], goal:'ret', r:.121, vol:.178, sh:.46, at:'9 Nov 2026', cfg:{years:3, goal:'ret', rf:.04, maxW:.5, volCap:.18, amount:10000}},
+];
+function renderSaved(){
+  $('scenCount').textContent=`(${saved.length})`;
+  $('scenBody').innerHTML = saved.length ? saved.map((s,i)=>`<tr>
+    <td><b>${esc(s.name)}</b>${s.example?'<span class="tag">Example</span>':''}</td>
+    <td style="text-align:left">${s.tickers.join(', ')}</td>
+    <td style="text-align:left"><span class="goal-pill ${s.goal==='ret'?'ret':''}">${s.goal==='ret'?'Return ≤ '+pct(s.cfg.volCap,0)+' vol':'Highest Sharpe'}</span></td>
+    <td>${pct(s.r)}</td><td>${pct(s.vol)}</td><td>${nf2.format(s.sh)}</td><td>${s.at}</td>
+    <td><span class="row-acts"><button class="btn" data-open="${i}">Open</button><button class="btn" data-del="${i}" aria-label="Delete ${esc(s.name)}">Delete</button></span></td></tr>`).join('')
+    : `<tr><td colspan="8" class="scen-empty">No saved scenarios yet. Run an optimisation and choose Save scenario.</td></tr>`;
+}
+$('scenBody').addEventListener('click', e=>{
+  const o=e.target.closest('[data-open]'), d=e.target.closest('[data-del]');
+  if(d){ const s=saved.splice(+d.dataset.del,1)[0]; renderSaved(); toast('Deleted “'+s.name+'”'); }
+  if(o){ const s=saved[+o.dataset.open]; Object.assign(state, {tickers:[...s.tickers]}, s.cfg);
+    $('amount').value=state.amount; $('rf').value=state.rf*100; $('maxW').value=state.maxW*100; $('volCap').value=state.volCap*100; $('volCapOut').textContent=Math.round(state.volCap*100)+'%';
+    document.querySelector(`input[name=goal][value=${state.goal}]`).checked=true; $('capWrap').hidden=state.goal!=='ret';
+    [...$('period').children].forEach(x=>x.setAttribute('aria-pressed', +x.dataset.y===state.years));
+    renderChips(); showView('opt'); run(); toast('Opened “'+s.name+'”'); }
+});
+$('saveBtn').onclick=()=>{ const f=$('saveForm'); f.hidden=!f.hidden; if(!f.hidden){ $('saveName').value=`${R.T.slice(0,3).join(' / ')}${R.n>3?' +'+(R.n-3):''} · ${state.goal==='sharpe'?'Sharpe':'Return'}`; $('saveName').select(); } };
+$('saveForm').addEventListener('submit', e=>{ e.preventDefault(); const w=weightsOf(current()), s=R.stats(w);
+  saved.unshift({name:$('saveName').value.trim()||'Untitled scenario', tickers:[...R.T], goal:state.goal, r:s.r, vol:s.vol, sh:s.sh, at:dfmt(new Date()),
+    cfg:{years:state.years, goal:state.goal, rf:state.rf, maxW:state.maxW, volCap:state.volCap, amount:state.amount}});
+  $('saveForm').hidden=true; renderSaved(); toast('Saved to My scenarios'); });
+$('csvBtn').onclick=async()=>{ const w=weightsOf(current());
+  const csv=['ticker,name,weight_optimised,weight_equal,amount_usd,shares', ...R.T.map((t,i)=>[t,`"${U[t].name}"`,w[i].toFixed(4),(1/R.n).toFixed(4),(w[i]*state.amount).toFixed(2),(w[i]*state.amount/R.lastPx[i]).toFixed(4)].join(','))].join('\n');
+  try{ await navigator.clipboard.writeText(csv); toast('CSV copied to clipboard'); } catch{ toast('Copy is blocked here. The app will download a CSV file.'); } };
+
+/* ---------- Views, theme, toast ---------- */
+function showView(v){ document.querySelectorAll('.nav button').forEach(b=>b.setAttribute('aria-selected', b.dataset.view===v));
+  $('viewOpt').hidden=v!=='opt'; $('viewScen').hidden=v!=='scen'; if(v==='opt') requestAnimationFrame(()=>Object.values(charts).forEach(c=>c.resize())); }
+document.querySelector('.nav').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) showView(b.dataset.view); });
+$('themeBtn').onclick=()=>{ const root=document.documentElement; const dark = root.dataset.theme ? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches; root.dataset.theme = dark?'light':'dark'; };
+const retheme=()=>{ if(R){ renderChips(); renderAll(); } };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+new MutationObserver(retheme).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+let tt; function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'), 2600); }
+
+
+/* ---------- Forward test (preview) ---------- */
+let ftDays=126;
+function forwardTest(){
+  const n=R.n, N=R.N, split=N-1-ftDays;
+  const ret=R.P.map(p=>{const a=[]; for(let i=1;i<=split;i++)a.push(p[i]/p[i-1]-1); return a;});
+  const M=ret[0].length, mean=ret.map(a=>a.reduce((x,y)=>x+y,0)/M);
+  const cov=ret.map((_,i)=>ret.map((_,j)=>{let s=0; for(let k=0;k<M;k++)s+=(ret[i][k]-mean[i])*(ret[j][k]-mean[j]); return s/(M-1)*TD;}));
+  const mu=mean.map(m=>m*TD), rand=rng(3), w=new Array(n); let best=-Infinity, bw=null, lowV=Infinity, lowW=null;
+  for(let k=0,t=0;k<SCEN&&t<600000;t++){ let s=0; for(let i=0;i<n;i++){w[i]=rand(); s+=w[i];} let mx=0; for(let i=0;i<n;i++){w[i]/=s; if(w[i]>mx)mx=w[i];} if(mx>state.maxW+1e-9) continue; k++;
+    let r=0,v=0; for(let i=0;i<n;i++){r+=w[i]*mu[i]; for(let j=0;j<n;j++)v+=w[i]*w[j]*cov[i][j];} v=Math.sqrt(v);
+    const score = state.goal==='sharpe' ? (r-state.rf)/v : (v<=state.volCap ? r : -Infinity);
+    if(score>best){best=score; bw=[...w];} if(v<lowV){lowV=v; lowW=[...w];} }
+  return {split, w: bw||lowW};
+}
+function pathStats(w, from){ const v=[]; for(let d=from; d<R.N; d++){ let x=0; for(let i=0;i<R.n;i++)x+=w[i]*R.P[i][d]/R.P[i][from]; v.push(x); }
+  return valuesStats(v); }
+function valuesStats(v){
+  const rs=[]; for(let i=1;i<v.length;i++)rs.push(v[i]/v[i-1]-1); const m=rs.reduce((a,b)=>a+b,0)/rs.length; const sd=Math.sqrt(rs.reduce((a,b)=>a+(b-m)**2,0)/(rs.length-1));
+  const vol=sd*Math.sqrt(TD), annR=m*TD; return {ret:v[v.length-1]-1, vol, sh:(annR-state.rf)/vol, dd:maxDD(v)}; }
+let FT=null;
+function renderGrowthFT(){
+  const t=tok(), g=growth(FT.w), e=growth(R.ew);
+  const cats=R.dates.map(d=>d.toISOString().slice(0,10)), sd=cats[FT.split];
+  chart('cGrowth').setOption({
+    animation:!reduce, textStyle:{fontFamily:FONT}, grid:{left:70, right:96, top:30, bottom:30},
+    tooltip:{trigger:'axis', backgroundColor:t.surface, borderColor:t.line, textStyle:{color:t.ink},
+      formatter:ps=>`<div style="font-variant-numeric:tabular-nums"><div style="color:${t.muted};margin-bottom:4px">${dfmt(new Date(ps[0].axisValue))}</div>${ps.filter(p=>p.value!=null).map(p=>`${p.marker} ${p.seriesName} <b style="float:right;margin-left:16px">${money(p.value)}</b>`).join('<br>')}</div>`},
+    xAxis:{type:'category', data:cats, boundaryGap:false, axisLine:{lineStyle:{color:t.line}}, axisTick:{show:false},
+      axisLabel:{color:t.muted, interval:Math.floor(cats.length/6), formatter:v=>new Date(v).toLocaleDateString('en-GB',{month:'short',year:'2-digit',timeZone:'UTC'})}},
+    yAxis:{type:'value', scale:true, axisLabel:{color:t.muted, formatter:v=>nf0.format(v)}, splitLine:{lineStyle:{color:t.line, type:[3,4]}}},
+    series:[
+      {name:'Optimo weights', type:'line', data:g.map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.accent, width:2.5}, itemStyle:{color:t.accent},
+        endLabel:{show:true, formatter:p=>money(p.value), color:t.accent, fontWeight:600, fontFamily:FONT},
+        markArea:{silent:true, itemStyle:{color:t.accent+'14'}, label:{show:true, position:'insideTop', color:t.accent, fontWeight:600, fontFamily:FONT, formatter:'Forward test · unseen data · weights fixed '+dfmt(R.dates[FT.split])}, data:[[{xAxis:sd},{xAxis:cats[cats.length-1]}]]},
+        markLine:{silent:true, symbol:'none', lineStyle:{color:t.accent, type:'solid', width:1.5}, label:{show:false}, data:[{xAxis:sd}]}},
+      {name:'Equal weight', type:'line', data:e.map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.ew, width:2, type:[6,4]}, itemStyle:{color:t.ew}},
+      {name:'S&P 500', type:'line', data:benchGrowth().map(v=>Math.round(v)), showSymbol:false, lineStyle:{color:t.bench, width:1.8}, itemStyle:{color:t.bench}},
+    ]
+  }, true);
+}
+function renderForward(){
+  if(!FT) return; const o=pathStats(FT.w, FT.split), e=pathStats(R.ew, FT.split), b=valuesStats(R.bench.P.slice(FT.split).map(x=>x/R.bench.P[FT.split]));
+  const wins=(o.ret>e.ret)+(o.sh>e.sh)+(o.dd>e.dd);
+  const v = wins>=3?['good','Held up on unseen data','var(--pos)']: wins===2?['mixed','Mostly held up','var(--sun)']:['bad','Did not hold up','var(--neg)'];
+  $('ftVerdict').className='verdict '+v[0]; $('ftVerdict').innerHTML=`<span class="dotv" style="background:${v[2]}"></span>${v[1]} · beat equal weight on ${wins} of 3`;
+  const m=ftDays===63?'3':ftDays===126?'6':'12';
+  $('ftLead').innerHTML=`Weights chosen on data up to <b>${dfmt(R.dates[FT.split])}</b> returned <b class="${o.ret>=0?'up':'down'}">${o.ret>=0?'+':''}${pct(o.ret)}</b> over the next ${m} months, vs <b>${e.ret>=0?'+':''}${pct(e.ret)}</b> for equal weight and <b>${b.ret>=0?'+':''}${pct(b.ret)}</b> for the S&amp;P 500.`;
+  const row=(l,k,f,lowBetter=false)=>{ const best=lowBetter?Math.min(o[k],e[k],b[k]):Math.max(o[k],e[k],b[k]); return `<tr><td>${l}</td><td><b class="${o[k]===best?'up':'down'}">${f(o[k])}</b></td><td>${f(e[k])}</td><td>${f(b[k])}</td></tr>`; };
+  $('ftBody').innerHTML=[row('Return','ret',v=>pct(v)), row('Sharpe (ann.)','sh',v=>nf2.format(v)), row('Max drawdown','dd',v=>pct(v)), row('Volatility (ann.)','vol',v=>pct(v),true)].join('');
+  const full=weightsOf(R.opt), mx=Math.max(...FT.w,...full);
+  $('ftStab').innerHTML=
+    R.T.map((t,i)=>`<div class="r"><b>${t}</b><span class="bars"><i class="tr" style="width:${FT.w[i]/mx*100}%"></i><i class="fp" style="width:${full[i]/mx*100}%"></i></span><span class="v">${pct(FT.w[i],0)} → ${pct(full[i],0)}</span></div>`).join('');
+}
+let perfMode='sum';
+function renderGrowth(){ FT=forwardTest(); perfMode==='ft'?renderGrowthFT():renderGrowthFull();
+  $('growthLg1').textContent=perfMode==='ft'?'Optimo weights (training)':'Optimised';
+  $('growthSub').textContent=perfMode==='ft'?'Weights picked using only data before the shaded zone, then held through it':'Buy and hold from the first day of the period, no rebalancing'; }
+function renderPerf(){ renderPerfSummary(); renderForward(); }
+document.getElementById('perfMode').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; [...b.parentNode.children].forEach(x=>x.setAttribute('aria-pressed', x===b));
+  perfMode=b.dataset.m; $('sumPane').hidden=perfMode!=='sum'; $('ftPane').hidden=perfMode!=='ft'; renderGrowth(); });
+document.getElementById('cmpSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; [...b.parentNode.children].forEach(x=>x.setAttribute('aria-pressed', x===b)); state.cmp=b.dataset.c; renderKPIs(); });
+document.getElementById('ftSeg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; [...b.parentNode.children].forEach(x=>x.setAttribute('aria-pressed', x===b)); ftDays=+b.dataset.d; renderGrowth(); renderPerf(); });
+
+/* ---------- Result views ---------- */
+function showPane(id){ document.querySelectorAll('.viewbar [role=tab]').forEach(b=>b.setAttribute('aria-selected', b.dataset.pane===id));
+  document.querySelectorAll('.pane').forEach(p=>p.hidden = p.id!=='pane-'+id);
+  requestAnimationFrame(()=>Object.values(charts).forEach(c=>c.resize()));
+  try{ localStorage.setItem('frontier.pane', id); }catch{} }
+document.querySelector('.viewbar').addEventListener('click', e=>{ const b=e.target.closest('[role=tab]'); if(b) showPane(b.dataset.pane); });
+document.querySelector('.viewbar').addEventListener('keydown', e=>{ if(!['ArrowRight','ArrowLeft'].includes(e.key)) return; const tabs=[...document.querySelectorAll('.viewbar [role=tab]')]; const i=tabs.findIndex(t=>t.getAttribute('aria-selected')==='true'); const n=tabs[(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length]; showPane(n.dataset.pane); n.focus(); });
+document.addEventListener('keydown', e=>{ if(openDrawer || e.target.closest('input,textarea,select') || e.metaKey || e.ctrlKey || e.altKey) return; const m={'1':'opt','2':'perf','3':'risk'}[e.key]; if(m && !$('viewOpt').hidden) showPane(m); });
+
+/* ---------- Drawers ---------- */
+let openDrawer=null, lastFocus=null;
+function showDrawer(id){ closeDrawer(); lastFocus=document.activeElement; openDrawer=$(id); openDrawer.hidden=false; $('scrim').hidden=false; openDrawer.querySelector('[data-close]').focus(); }
+function closeDrawer(){ if(!openDrawer) return; openDrawer.hidden=true; $('scrim').hidden=true; openDrawer=null; lastFocus?.focus?.(); }
+$('helpBtn').onclick=()=>showDrawer('helpDrawer');
+$('aiBtn').onclick=()=>{ showDrawer('aiDrawer'); $('aiInput').focus(); };
+$('scrim').onclick=closeDrawer; document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDrawer);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDrawer(); });
+function aiAsk(q){ if(!q) return; const log=$('aiLog');
+  const me=document.createElement('div'); me.className='bubble me'; me.textContent=q; log.appendChild(me);
+  const bot=document.createElement('div'); bot.className='bubble bot'; bot.textContent="I'm not connected yet. When the assistant launches, I'll answer this using your current run and saved scenarios."; log.appendChild(bot);
+  log.scrollTop=log.scrollHeight; }
+$('aiPrompts').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) aiAsk(b.textContent); });
+$('aiForm').addEventListener('submit', e=>{ e.preventDefault(); aiAsk($('aiInput').value.trim()); $('aiInput').value=''; });
+
+/* ---------- Boot ---------- */
+renderChips(); renderSaved(); R=compute(); renderAll();
+try{ const sp=localStorage.getItem('frontier.pane'); if(sp && $('pane-'+sp)) showPane(sp); }catch{}
+chart('cFront').on('click', p=>{ if(p.seriesIndex===0){ state.picked=p.data[3]; renderPick(); } });
+})();
+</script>
+</body></html>
