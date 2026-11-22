@@ -66,6 +66,16 @@ Fields in each `data/<TICKER>.csv`:
 8. **Visualize**: scatter plot of volatility vs. return for all scenarios, coloured by
    Sharpe ratio, with the optimal portfolio highlighted.
 
+## Results
+
+![Equal-weighted portfolio performance](assets/equal_weighted_portfolio.png)
+
+The equal-weighted portfolio grew from $10,000 to about $44,700 between January 2019 and December 2021.
+
+![Optimal portfolio among 10,000 scenarios](assets/optimal_portfolio.png)
+
+Volatility vs. return for all 10,000 weightings, coloured by Sharpe ratio. The black-outlined point is the optimal (max-Sharpe) portfolio.
+
 ## Tech Stack
 
 **Language:** Python
