@@ -1,2 +1,8 @@
+.venv/
+.venv
+
 docs/
 data/
+raw/
+1.Download_Data.ipynb
+2.Portfolio_Optimization_2024_2026.ipynb
