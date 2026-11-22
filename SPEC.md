@@ -9,7 +9,7 @@ This spec covers a **quick demo** with a deliberately simple back end. A fuller 
 | Visual reference (open in a browser) | [`mockups/optimo-dashboard.html`](mockups/optimo-dashboard.html) |
 | Original analysis this is based on | [`2 - Portfolio Optimization - Complete.ipynb`](2%20-%20Portfolio%20Optimization%20-%20Complete.ipynb) |
 | Price download script | [`scripts/download_prices.py`](scripts/download_prices.py) |
-| Test data from the notebook (2019–2021) | [`tests/fixtures/notebook-2019-2021.csv`](tests/fixtures/notebook-2019-2021.csv) |
+| Reference numbers for engine tests | [`scripts/reference_values.py`](scripts/reference_values.py) |
 
 ---
 
@@ -98,10 +98,10 @@ Produce both with:
 
 ```bash
 pip install yfinance pandas
-python scripts/download_prices.py --tickers <your tickers> --years 5
+python scripts/download_prices.py --tickers <your tickers> --years 2
 ```
 
-The script always adds SPY, prints row counts per ticker and flags short histories. Download 5 years so that the 1Y/2Y/3Y/5Y look-back buttons all work. Note that `.gitignore` excludes `data/`, so seed files live in `seed/`.
+The script always adds SPY, prints row counts per ticker and flags short histories. The demo uses **2 years** of prices, so the look-back buttons are **1Y and 2Y** (hide 3Y and 5Y). If you already have the 2-year download in another format, convert it to these two files. Note that `.gitignore` excludes `data/`, so seed files live in `seed/`.
 
 ### 4.2 Data model (Rayfin, TypeScript)
 
@@ -166,7 +166,7 @@ export type Goal = 'maxSharpe' | 'maxReturnUnderVol';
 
 export interface ScenarioSettings {
   symbols: string[];        // 2–10, order kept for display
-  lookbackYears: 1 | 2 | 3 | 5;
+  lookbackYears: 1 | 2;     // demo has 2 years of data
   amount: number;           // USD, default 10_000
   goal: Goal;
   volCap: number;           // e.g. 0.25, used when goal = maxReturnUnderVol
@@ -261,19 +261,25 @@ Use **252 trading days per year** throughout, as the notebook does.
 
 ### 5.6 Tests (`src/engine/*.test.ts`)
 
-Use `tests/fixtures/notebook-2019-2021.csv`. It holds the notebook's original data: AMD, AAPL, MSFT, ORCL, 2 Jan 2019 to 30 Dec 2021, 756 days. The notebook text says "two years"; the files actually cover three. These are reference values computed from that file with pandas/NumPy:
+Test the TypeScript engine against Python results from **your own 2-year seed data**, so both sides use the same prices:
 
-| Check | Expected | Tolerance |
-|---|---|---|
-| Equal-weight cumulative return ($10k, buy and hold) | 3.46837 (= +346.8%) | 1e-4 |
-| Equal-weight mean daily return | 0.0021983 | 1e-6 |
-| Equal-weight std of daily return | 0.0206783 | 1e-6 |
-| Equal-weight annualised Sharpe (rf = 0) | 1.68764 | 1e-3 |
-| Annualised mean return AMD / AAPL / MSFT / ORCL | 0.82119 / 0.57178 / 0.46173 / 0.28623 | 1e-4 |
-| Annualised volatility AMD / AAPL / MSFT / ORCL | 0.53062 / 0.34140 / 0.30356 / 0.31090 | 1e-4 |
-| Correlation AAPL–MSFT | 0.7735 | 1e-3 |
-| Equal-weight expected return / volatility (covariance method) | 0.53523 / 0.30483 | 1e-4 |
-| Best Sharpe from 10,000 draws (rf = 0, no cap) | ≈ 1.83 (NumPy seed 3 gave 1.8323 with weights 0.30 / 0.56 / 0.13 / 0.01) | ±0.02 |
+```bash
+python scripts/reference_values.py --prices seed/prices.csv --tickers <4 tickers> --risk-free 0
+```
+
+The script prints the expected values, using the same formulas as the notebook (pandas/NumPy). Copy them into the test file:
+
+| Check | Tolerance |
+|---|---|
+| Equal-weight cumulative return (buy and hold) | 1e-4 |
+| Equal-weight mean and std of daily return | 1e-6 |
+| Equal-weight annualised Sharpe (rf = 0) | 1e-3 |
+| Annualised mean return and volatility per stock | 1e-4 |
+| Correlation matrix | 1e-3 |
+| Equal-weight expected return / volatility (covariance method) | 1e-4 |
+| Best Sharpe from 10,000 draws (rf = 0, no cap) | ±0.02 (random sequences differ from NumPy) |
+
+Earlier check of the method: on the notebook's original 2019–2021 data, these formulas gave a best Sharpe of 1.832 at 62.8% return and 34.3% volatility, matching the notebook's own frontier chart.
 
 Property tests:
 
@@ -384,7 +390,7 @@ Use the copy from the mockup's "How it works" drawer and ⓘ tooltips as written
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | **Seed data** | `seed/prices.csv` and `seed/tickers.csv` generated for the chosen tickers + SPY, 5 years, row counts checked |
+| M0 | **Seed data** | `seed/prices.csv` and `seed/tickers.csv` generated for the chosen tickers + SPY, 2 years, row counts checked |
 | M1 | **Rayfin project and data** | Project scaffolded, the three models defined, seed loaded, `tickers()` and `prices()` return data in Fabric |
 | M2 | **Engine** | `src/engine` implements section 5, and all tests in 5.6 pass |
 | M3 | **Layout and inputs** | Top bar, input rail, page head, KPI row and view tabs match the mockup at 1920 × 1080; Run calls the engine in a Web Worker |
